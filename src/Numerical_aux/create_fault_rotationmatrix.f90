@@ -42,6 +42,7 @@ MODULE create_fault_rotationmatrix_mod
   !---------------------------------------------------------------------------!
   USE TypesDef
   USE JacobiNormal_mod  
+  USE COMMON_operators_mod
   !---------------------------------------------------------------------------!
   IMPLICIT NONE
   PRIVATE
@@ -54,7 +55,7 @@ MODULE create_fault_rotationmatrix_mod
 
 CONTAINS
 
-  SUBROUTINE create_fault_rotationmatrix (rotmat,iFace,EQN,MESH)
+  SUBROUTINE create_fault_rotationmatrix (rotmat,iFace,BackgroundType,x,y,z, EQN,MESH)
     !> routine creates rotationmatrix for a particular point on the fault that
     !> rotates the tangential fault vectors in strike and dip direction 
     !-------------------------------------------------------------------------!
@@ -73,6 +74,8 @@ CONTAINS
     REAL                            :: strike_vector(1:3)                     !< strike vector
     REAL                            :: dip_vector(1:3)                        !< dip vector
     REAL                            :: norm                                   !< norm
+    REAL                            :: x,y,z,uz(1:3)                          !
+    INTEGER                         :: BackgroundType
     !-------------------------------------------------------------------------!
     INTENT(IN)    :: MESH, EQN                                                !< global variables
     !-------------------------------------------------------------------------!
@@ -88,19 +91,29 @@ CONTAINS
     n = MESH%Fault%geoNormals(1:3,iFace)
     ! s = MESH%Fault%geoTangent1(1:3,iFace)
     ! t = MESH%Fault%geoTangent2(1:3,iFace)
+    if (BackgroundType.NE.1201) THEN
+       strike_vector(1) = n(2)/sqrt(n(1)**2+n(2)**2)
+       strike_vector(2) = -n(1)/sqrt(n(1)**2+n(2)**2)
+       strike_vector(3) = 0.0D0
+      
+       dip_vector(1) = -strike_vector(2)*n(3)
+       dip_vector(2) = strike_vector(1)*n(3)
+       dip_vector(3) = strike_vector(2)*n(1) - strike_vector(1)*n(2)
+       norm = 1.0D0/sqrt(dip_vector(1)**2+dip_vector(2)**2+dip_vector(3)**2)
+       dip_vector(1) = dip_vector(1)*norm
+       dip_vector(2) = dip_vector(2)*norm
+       dip_vector(3) = dip_vector(3)*norm
+    ELSE    !GEOCENTER REFERENTIAL
+       uz = (/x,y,z/)
+       uz = uz/sqrt(uz(1)**2+uz(2)**2+uz(3)**2)
 
-    strike_vector(1) = n(2)/sqrt(n(1)**2+n(2)**2)
-    strike_vector(2) = -n(1)/sqrt(n(1)**2+n(2)**2)
-    strike_vector(3) = 0.0D0
-   
-    dip_vector(1) = -strike_vector(2)*n(3)
-    dip_vector(2) = strike_vector(1)*n(3)
-    dip_vector(3) = strike_vector(2)*n(1) - strike_vector(1)*n(2)
-    norm = 1.0D0/sqrt(dip_vector(1)**2+dip_vector(2)**2+dip_vector(3)**2)
-    dip_vector(1) = dip_vector(1)*norm
-    dip_vector(2) = dip_vector(2)*norm
-    dip_vector(3) = dip_vector(3)*norm
-    
+       strike_vector = n .x. uz 
+       strike_vector = strike_vector/sqrt(strike_vector(1)**2+strike_vector(2)**2+strike_vector(3)**2)
+
+       dip_vector = n .x. strike_vector
+       dip_vector = dip_vector/sqrt(dip_vector(1)**2+dip_vector(2)**2+dip_vector(3)**2)
+    ENDIF
+
     CALL RotationMatrix3D(n,strike_vector,dip_vector,T(:,:),iT(:,:),EQN)
     rotmat = iT(1:6,1:6)
   

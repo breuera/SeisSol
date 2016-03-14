@@ -284,6 +284,7 @@ CONTAINS
     REAL    :: xV(4), yV(4), zV(4)
     REAL    :: xab(3), xac(3), grad2d(2,2), JacobiT2d(2,2)
     REAL, ALLOCATABLE  :: projected_RT(:)
+    REAL    :: x,y,z,uz(1:3)                          !
 
 #ifndef GENERATEDKERNELS
     REAL, POINTER     :: DOFiElem_ptr(:,:)  => NULL()                         ! Actual dof
@@ -575,9 +576,21 @@ CONTAINS
 
               IF (DynRup_output%OutputMask(6).EQ.1) THEN
                   ! TU 07.15 rotate Slip from face reference coordinate to (strike,dip, normal) reference cordinate
-                  strike_vector(1) = NormalVect_n(2)/sqrt(NormalVect_n(1)**2+NormalVect_n(2)**2)
-                  strike_vector(2) = -NormalVect_n(1)/sqrt(NormalVect_n(1)**2+NormalVect_n(2)**2)
-                  strike_vector(3) = 0.0D0
+                  if (DISC%DynRup%BackgroundType.NE.1201) THEN
+
+                     strike_vector(1) = NormalVect_n(2)/sqrt(NormalVect_n(1)**2+NormalVect_n(2)**2)
+                     strike_vector(2) = -NormalVect_n(1)/sqrt(NormalVect_n(1)**2+NormalVect_n(2)**2)
+                     strike_vector(3) = 0.0D0
+                  ELSE !GEOCENTER
+                     X = DISC%DynRup%DynRup_out_elementwise%RecPoint(iOutPoints)%X
+                     Y = DISC%DynRup%DynRup_out_elementwise%RecPoint(iOutPoints)%Y
+                     Z = DISC%DynRup%DynRup_out_elementwise%RecPoint(iOutPoints)%Z
+                     uz = (/x,y,z/)
+                     uz = uz/sqrt(uz(1)**2+uz(2)**2+uz(3)**2)
+
+                     strike_vector = NormalVect_n .x. uz
+                     strike_vector = strike_vector/sqrt(strike_vector(1)**2+strike_vector(2)**2+strike_vector(3)**2)
+                  ENDIF
 
                   cos1 = dot_product(strike_vector(:),NormalVect_s(:))
                   crossprod(:) = strike_vector(:) .x. NormalVect_s(:)

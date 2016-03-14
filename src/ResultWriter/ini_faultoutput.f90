@@ -246,7 +246,10 @@ CONTAINS
     INTEGER                 :: stat
     REAL                    :: tmp_mat(6)       ! temporary stress tensors
     REAL                    :: rotmat(1:6,1:6)  ! rotation matrix for individual fault receiver
+    REAL                    :: x,y,z
+    INTEGER                 :: BackgroundType
 
+    BackgroundType = DISC%DynRup%BackgroundType
     DO i = 1, DISC%DynRup%DynRup_out_atPickpoint%nDR_pick
       ! output distance (in reference units to StdOut)
       logInfo(*) 'Fault pickpoint ',i,' of this MPI domain has its next GP at', &
@@ -272,9 +275,12 @@ CONTAINS
       ! load stress values of nearest boundary GP: iBndGP
       iBndGP = DISC%DynRup%DynRup_out_atPickpoint%OutInt(i,1)
       iFault = DISC%DynRup%DynRup_out_atPickpoint%RecPoint(i)%index
+      X = DISC%DynRup%DynRup_out_elementwise%RecPoint(i)%X
+      Y= DISC%DynRup%DynRup_out_elementwise%RecPoint(i)%Y
+      Z = DISC%DynRup%DynRup_out_elementwise%RecPoint(i)%Z
       !
       ! Create rotation matrix that rotates solution to strike and dip directions on arbitrary shaped faults
-      CALL create_fault_rotationmatrix(rotmat,iFault,EQN,MESH)
+      CALL create_fault_rotationmatrix(rotmat,iFault,BackgroundType,X,Y,Z,EQN,MESH)
       DISC%DynRup%DynRup_out_atPickpoint%rotmat(i,1:6,1:6) = rotmat
       !
       ! create tmp_mat = full tensor for rotation
@@ -1023,6 +1029,7 @@ CONTAINS
     INTEGER                 :: OutVars
     INTEGER                 :: stat
     INTEGER                         :: VertexSide(4,3)
+    INTEGER                 :: BackgroundType
     REAL                    :: tolerance                     ! tolerance if the receiver belongs to this element
     REAL                    :: io_x, io_y, io_z              ! temp store of receiver location
     REAL                    :: xmin,xmax,ymin,ymax,zmin,zmax ! Maximum extend of computational domain
@@ -1252,12 +1259,16 @@ CONTAINS
        !
        CALL eval_faultreceiver(DISC%DynRup%DynRup_out_elementwise,MESH,BND,DISC)
        ! loop to evaluate the intial stress field in every subtet
+       BackgroundType = DISC%DynRup%BackgroundType
        DO iOutPoints = 1,DISC%DynRup%DynRup_out_elementwise%nDR_pick ! sub tet indices
          iBndGP = DISC%DynRup%DynRup_out_elementwise%OutInt(iOutPoints,1)
          iFault = DISC%DynRup%DynRup_out_elementwise%RecPoint(iOutPoints)%index
+         X = DISC%DynRup%DynRup_out_elementwise%RecPoint(iOutPoints)%X
+         Y= DISC%DynRup%DynRup_out_elementwise%RecPoint(iOutPoints)%Y
+         Z = DISC%DynRup%DynRup_out_elementwise%RecPoint(iOutPoints)%Z
          ! create fault rotationmatrix only once for every mother tet
          !
-         IF (MOD((iOutPoints-1),SubElem).EQ.0) CALL create_fault_rotationmatrix(rotmat,iFault,EQN,MESH) ! mother index
+         IF (MOD((iOutPoints-1),SubElem).EQ.0) CALL create_fault_rotationmatrix(rotmat,iFault,BackgroundType,X,Y,Z,EQN,MESH) ! mother index
          !
          ! store fault rotationmatrix only for every mother tet
          DISC%DynRup%DynRup_out_elementwise%rotmat((iOutPoints-1)/(SubElem)+1,1:6,1:6) = rotmat
