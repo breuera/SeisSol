@@ -275,9 +275,9 @@ CONTAINS
       ! load stress values of nearest boundary GP: iBndGP
       iBndGP = DISC%DynRup%DynRup_out_atPickpoint%OutInt(i,1)
       iFault = DISC%DynRup%DynRup_out_atPickpoint%RecPoint(i)%index
-      X = DISC%DynRup%DynRup_out_elementwise%RecPoint(i)%X
-      Y= DISC%DynRup%DynRup_out_elementwise%RecPoint(i)%Y
-      Z = DISC%DynRup%DynRup_out_elementwise%RecPoint(i)%Z
+      X = DISC%DynRup%DynRup_out_atPickpoint%RecPoint(i)%X
+      Y = DISC%DynRup%DynRup_out_atPickpoint%RecPoint(i)%Y
+      Z = DISC%DynRup%DynRup_out_atPickpoint%RecPoint(i)%Z
       !
       ! Create rotation matrix that rotates solution to strike and dip directions on arbitrary shaped faults
       CALL create_fault_rotationmatrix(rotmat,iFault,BackgroundType,X,Y,Z,EQN,MESH)
