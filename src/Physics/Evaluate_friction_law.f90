@@ -368,7 +368,6 @@ MODULE Eval_friction_law_mod
         DISC%DynRup%rupture_time(iFace, iBndGP)=time
         DISC%DynRup%RF(iFace,iBndGP) = .FALSE.
      ENDIF
-
      !output time when shear stress is equal to the dynamic stress after rupture arrived
      !currently only for linear slip weakening
       IF ( (DISC%DynRup%rupture_time(iFace, iBndGP).GT.0.0) .AND. (DISC%DynRup%rupture_time(iFace, iBndGP) .LE. time)) THEN
@@ -377,7 +376,10 @@ MODULE Eval_friction_law_mod
           DISC%DynRup%DS(iFace,iBndGP) = .FALSE.
           ENDIF
       ENDIF
-
+     !Slip Duration Output
+     IF ( DISC%DynRup%RF(iFace,iBndGP).EQ..FALSE. .AND. DISC%DynRup%SlipDuration(iFace,iBndGP).EQ.0 .AND. LocSR .LT. 0.001D0) THEN
+         DISC%DynRup%SlipDuration(iFace,iBndGP)=  time - DISC%DynRup%rupture_time(iFace, iBndGP)
+     ENDIF
      !idem
      IF (LocSR.GT.DISC%DynRup%PeakSR(iFace,iBndGP)) THEN
         DISC%DynRup%PeakSR(iFace,iBndGP) = LocSR
@@ -743,7 +745,6 @@ MODULE Eval_friction_law_mod
         DISC%DynRup%rupture_time(iFace, iBndGP)=time
         DISC%DynRup%RF(iFace,iBndGP) = .FALSE.
      ENDIF
-
      !output time when shear stress is equal to the dynamic stress after rupture arrived
      !currently only for linear slip weakening
       IF ( (DISC%DynRup%rupture_time(iFace, iBndGP).GT.0.0) .AND. (DISC%DynRup%rupture_time(iFace, iBndGP) .LE. time)) THEN
@@ -752,8 +753,10 @@ MODULE Eval_friction_law_mod
           DISC%DynRup%DS(iFace,iBndGP) = .FALSE.
           ENDIF
       ENDIF
-
-
+     !Slip Duration Output
+     IF ( DISC%DynRup%RF(iFace,iBndGP).EQ..FALSE. .AND. DISC%DynRup%SlipDuration(iFace,iBndGP).EQ.0 .AND. LocSR .LT. 0.001D0) THEN
+         DISC%DynRup%SlipDuration(iFace,iBndGP)=  time - DISC%DynRup%rupture_time(iFace, iBndGP)
+     ENDIF
      !idem
      IF (LocSR.GT.DISC%DynRup%PeakSR(iFace,iBndGP)) THEN
         DISC%DynRup%PeakSR(iFace,iBndGP) = LocSR
@@ -1817,6 +1820,10 @@ MODULE Eval_friction_law_mod
      IF (DISC%DynRup%RF(iFace,iBndGP) .AND. LocSR .GT. 0.001D0) THEN
         DISC%DynRup%rupture_time(iFace, iBndGP)=time
         DISC%DynRup%RF(iFace,iBndGP) = .FALSE.
+     ENDIF
+     !Slip Duration Output
+     IF (( DISC%DynRup%RF(iFace,iBndGP).EQV..FALSE.) .AND. (DISC%DynRup%SlipDuration(iFace,iBndGP).EQ.0d0) .AND. (LocSR .LT. 0.001D0)) THEN
+         DISC%DynRup%SlipDuration(iFace,iBndGP)=  time - DISC%DynRup%rupture_time(iFace, iBndGP)
      ENDIF
      IF (LocSR.GT.DISC%DynRup%PeakSR(iFace,iBndGP)) THEN
         DISC%DynRup%PeakSR(iFace,iBndGP) = LocSR

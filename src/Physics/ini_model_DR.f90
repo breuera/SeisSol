@@ -352,7 +352,10 @@ MODULE ini_model_DR_mod
     ALLOCATE(DISC%DynRup%dynStress_time(MESH%Fault%nSide,DISC%Galerkin%nBndGP))
     DISC%DynRup%dynStress_time(:,:)=0.
 
-    
+    !T. Ulrich 5.2016 Slip duration output
+    ALLOCATE(DISC%DynRup%SlipDuration(MESH%Fault%nSide,DISC%Galerkin%nBndGP))
+    DISC%DynRup%SlipDuration(:,:)=0.
+
     !frictional parameter initialization
     SELECT CASE(EQN%FL)
     CASE(0)
