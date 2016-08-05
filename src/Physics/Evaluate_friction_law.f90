@@ -377,7 +377,7 @@ MODULE Eval_friction_law_mod
           ENDIF
       ENDIF
      !Slip Duration Output
-     IF ( DISC%DynRup%RF(iFace,iBndGP).EQ..FALSE. .AND. DISC%DynRup%SlipDuration(iFace,iBndGP).EQ.0 .AND. LocSR .LT. 0.001D0) THEN
+     IF ( DISC%DynRup%RF(iFace,iBndGP).EQV..FALSE. .AND. DISC%DynRup%SlipDuration(iFace,iBndGP).EQ.0 .AND. LocSR .LT. 0.001D0) THEN
          DISC%DynRup%SlipDuration(iFace,iBndGP)=  time - DISC%DynRup%rupture_time(iFace, iBndGP)
      ENDIF
      !idem
@@ -754,7 +754,7 @@ MODULE Eval_friction_law_mod
           ENDIF
       ENDIF
      !Slip Duration Output
-     IF ( DISC%DynRup%RF(iFace,iBndGP).EQ..FALSE. .AND. DISC%DynRup%SlipDuration(iFace,iBndGP).EQ.0 .AND. LocSR .LT. 0.001D0) THEN
+     IF ( DISC%DynRup%RF(iFace,iBndGP).EQV..FALSE. .AND. DISC%DynRup%SlipDuration(iFace,iBndGP).EQ.0 .AND. LocSR .LT. 0.001D0) THEN
          DISC%DynRup%SlipDuration(iFace,iBndGP)=  time - DISC%DynRup%rupture_time(iFace, iBndGP)
      ENDIF
      !idem
