@@ -154,7 +154,7 @@ MODULE Eval_friction_law_mod
                                 time,iT,                                   & ! IN: time, inv Trafo
                                 DISC,EQN,MESH,MPI,IO)
 
-        CASE(16,17,29,30) ! Specific conditions for SCEC TPV16/17
+        CASE(16,17,29,30,302) ! Specific conditions for SCEC TPV16/17
                     ! basically, introduction of a time dependent forced rupture
 
            CALL Linear_slip_weakening_TPV1617(                             & !
