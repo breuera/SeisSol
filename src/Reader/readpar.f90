@@ -242,13 +242,13 @@ CONTAINS
     logInfo(*) '<--------------------------------------------------------->'
     ! 
     EQN%Dimension = 3                                                      
-    logInfo(*) 'Solve 3-dimensional equations'
+    logInfo0(*) 'Solve 3-dimensional equations'
     EQN%nvar = 9                                           
-    logInfo(*) 'Number of Variables    is ',EQN%nVar                                                    
+    logInfo0(*) 'Number of Variables    is ',EQN%nVar                                                    
     EQN%EqType = 8                                                ! equationtype 
     !                                                             ! (8=seismic wave equations)               
     !
-    logInfo(*) 'Solving evolution equation for seismic wave propagation. '
+    logInfo0(*) 'Solving evolution equation for seismic wave propagation. '
     !
     EQN%linearized = .TRUE.
     ! aheineck, @TODO these values are used, but not initialized > Begin
@@ -276,12 +276,12 @@ CONTAINS
     !
     SELECT CASE(Anisotropy)
     CASE(0)
-      logInfo(*) 'Isotropic material is assumed. '
+      logInfo0(*) 'Isotropic material is assumed. '
       EQN%Anisotropy = Anisotropy
       EQN%nBackgroundVar = 3+EQN%nBackgroundVar
       EQN%nNonZeroEV = 3
     CASE(1)
-      logInfo(*) 'Full triclinic material is assumed. '
+      logInfo0(*) 'Full triclinic material is assumed. '
       EQN%Anisotropy = Anisotropy
       EQN%nBackgroundVar = 22+EQN%nBackgroundVar
       EQN%nNonZeroEV = 3
@@ -334,18 +334,18 @@ CONTAINS
 
     SELECT CASE(Anelasticity)
     CASE(0)
-      logInfo(*) 'No attenuation assumed. '
+      logInfo0(*) 'No attenuation assumed. '
       EQN%Anelasticity = Anelasticity
       EQN%nAneMaterialVar = 3
       EQN%nMechanisms    = 0
       EQN%nAneFuncperMech= 0
       EQN%nVarTotal = EQN%nVar                                                     !
     CASE(1)
-       logInfo(*) 'Viscoelastic attenuation assumed ... '
+       logInfo0(*) 'Viscoelastic attenuation assumed ... '
         EQN%Anelasticity = Anelasticity
          IF(EQN%Anisotropy.NE.2)   THEN
            EQN%nAneFuncperMech = 6                                                    !
-           logInfo(*) '... using ', EQN%nAneFuncperMech,' anelastic functions per Mechanism.'                                                   !
+           logInfo0(*) '... using ', EQN%nAneFuncperMech,' anelastic functions per Mechanism.'                                                   !
          ENDIF
     CASE DEFAULT
       logError(*) 'Choose 0 or 1 as anelasticity assumption. '
@@ -546,7 +546,7 @@ CONTAINS
       ENDDO
       CLOSE(IO%UNIT%other01)      
       !
-  CASE(12, 26) ! Plasticity with constant material properties, initial stress (loading) must be assigned to every element in the domain
+  CASE(12, 26, 30, 121) ! Plasticity with constant material properties, initial stress (loading) must be assigned to every element in the domain
                ! special case for TPV13 and TPV27, add other cases that use plasticity with different initial stress values here
       IF (EQN%Plasticity.EQ.1)THEN
         logInfo0(*) 'Jacobians are globally constant with rho0, mu, lambda:'
@@ -557,6 +557,41 @@ CONTAINS
         logInfo(*) '| ERROR: This material type is only used when plasticity is on.'
       ENDIF
       !
+
+  CASE(119) !Roughfaults, plasticity and Anelasticity
+ 
+      if (EQN%Anelasticity.EQ.1) THEN
+      logInfo0(*) 'Material properties are read from file : ', TRIM(EQN%MaterialFileName)
+      CALL OpenFile(                                        &
+            UnitNr       = IO%UNIT%other01                , &
+            Name         = EQN%MaterialFileName           , &
+            create       = .FALSE.                          )
+      logInfo(*) 'Reading material property file ...  '
+      READ(IO%UNIT%other01,'(i10,a)') EQN%nLayers, cdummy             ! Number of different material zones
+      READ(IO%UNIT%other01,'(i10,a)') EQN%nMechanisms, cdummy         ! Number of different attenuation mechanisms
+      logInfo(*) 'Model has ',EQN%nMechanisms,' attenuation mechanisms.'
+      READ(IO%UNIT%other01,*) EQN%FreqCentral                             ! Central frequency of the absorption band (in Hertz)
+      logInfo(*) 'with central frequency ',EQN%FreqCentral
+      READ(IO%UNIT%other01,*) EQN%FreqRatio                               ! The ratio between the maximum and minimum frequencies of our bandwidth
+      logInfo(*) 'and frequency ratio ',EQN%FreqRatio
+
+      EQN%nBackgroundVar  = 3 + EQN%nMechanisms * 4
+      EQN%nAneMaterialVar = 5        ! rho, mu, lambda, Qp, Qs
+      EQN%nVarTotal = EQN%nVar + EQN%nAneFuncperMech*EQN%nMechanisms                                                    !
+      EQN%AneMatIni = 4                                                  ! indicates where in MaterialVal begin the anelastic parameters 
+
+      ALLOCATE(EQN%MODEL(1:EQN%nLayers,EQN%nAneMaterialVar))
+      DO i = 1,EQN%nLayers
+           READ(IO%UNIT%other01,*) intDummy, EQN%MODEL(i,:)
+      ENDDO
+      CLOSE(IO%UNIT%other01)
+      else
+        logInfo0(*) 'Jacobians are globally constant with rho0, mu, lambda:'
+        logInfo0(*) ' rho0 = ', EQN%rho0     ! (1)
+        logInfo0(*) ' mu = ', EQN%mu       ! (2)
+        logInfo0(*) ' lambda = ', EQN%lambda   ! (3)
+      endif
+      
   CASE(60,61,62) ! special case of 1D landers example
       !
       logInfo0(*) 'Material property zones are defined by SeisSol. '
@@ -1317,7 +1352,7 @@ CONTAINS
     DISC%DynRup%DynRup_out_elementwise%OutputMask(1:12) =  OutputMask(1:12)      ! read info of desired output 1/ yes, 0/ no
                                                                                      ! position: 1/ slip rate 2/ stress 3/ normal velocity
                                                                                      ! 4/ in case of rate and state output friction and state variable
-                                                                                     ! 5/ background values 6/Slip 7/rupture speed 8/final slip 9/peak SR
+                                                                                     ! 5/ background values 6/Slip 7/rupture speed 8/Absolute slip 9/peak SR
                                                                                      ! 10/rupture arrival 11/dynamic shear stress arrival 12/Slip duration
     DISC%DynRup%DynRup_out_elementwise%refinement_strategy = refinement_strategy
 
@@ -1690,7 +1725,7 @@ CONTAINS
              ! all parameters are defined in input file of INITIAL VALUES
              DISC%DynRup%inst_healing = 0
              CONTINUE
-           CASE(30) !LSW with a smoothed rupture in a circular patch, used for example in TPV29/TPV30 and TPV26/TPV27
+           CASE(30,302) !LSW with a smoothed rupture in a circular patch, used for example in TPV29/TPV30 and TPV26/TPV27
              DISC%DynRup%Mu_D_ini = Mu_D_ini
              DISC%DynRup%Mu_S_ini = Mu_S_ini
              DISC%DynRup%D_C_ini  = D_C_ini
