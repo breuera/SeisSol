@@ -560,6 +560,11 @@ CONTAINS
   CASE(60,61,62) ! special case of 1D landers example
       !
       logInfo0(*) 'Material property zones are defined by SeisSol. '
+
+  CASE(66) ! special case for HFF (North Iceland, M. Weingaertner 22.06.2016)
+      !
+      logInfo0(*) 'Material property zones are defined by SeisSol. '
+
   CASE(33) ! special case of TPV33, T Ulrich 14.01.2016
       !
       logInfo0(*) 'Material property zones are defined by SeisSol. '

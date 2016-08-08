@@ -887,6 +887,47 @@ CONTAINS
 
        ENDDO
 
+       CASE(66) ! 1D layered medium, imposed without meshed layers for HFF (from IMO)
+               ! values are averaged respecting the thickness layer, except for layer 1: see info sheet
+               ! Note that mesh coordinates are in km, but the scaling matrix is used in read_mesh
+
+         ! Layer                   depth    rho     mu          lambda
+         BedrockVelModel(1,:) = (/ -50.0, 2400.0, 0.446e10, 0.4984e10/)
+         BedrockVelModel(2,:) = (/ -500.0, 2500.0, 1.1654e10, 1.2792e10/)
+         BedrockVelModel(3,:) = (/ -2500.0, 2700.0, 2.3569e10, 2.5870e10/)
+         BedrockVelModel(4,:) = (/ -5000.0, 2800.0, 3.8191e10, 4.1918e10/)
+         BedrockVelModel(5,:) = (/ -7000.0, 2850.0, 4.2544e10, 4.6696e10/)
+         BedrockVelModel(6,:) = (/ -11000.0, 2950.0, 4.6665e10, 5.1220e10/)
+         BedrockVelModel(7,:) = (/ -20000.0, 2950.0, 4.7873e10, 5.2545e10/)
+         BedrockVelModel(8,:) = (/ -28000.0, 3100.0, 5.2603e10, 5.7737e10/)
+         BedrockVelModel(9,:) = (/ -32000.0, 3150.0, 5.5686e10, 6.1121e10/)
+         BedrockVelModel(10,:) = (/ -60000.0, 3260.0, 6.2398e10, 6.8489e10/)
+         !
+         DO iElem = 1, MESH%nElem
+             z = MESH%ELEM%xyBary(3,iElem)
+             IF (z.GT.BedrockVelModel(1,1)) THEN
+                 MaterialVal(iElem,1:3) =   BedrockVelModel(1,2:4)
+             ELSEIF ((z.LT.BedrockVelModel(1,1)).AND.(z.GE.BedrockVelModel(2,1))) THEN
+                 MaterialVal(iElem,1:3) =   BedrockVelModel(2,2:4)
+             ELSEIF ((z.LT.BedrockVelModel(2,1)).AND.(z.GE.BedrockVelModel(3,1))) THEN
+                 MaterialVal(iElem,1:3) =   BedrockVelModel(3,2:4)
+             ELSEIF ((z.LT.BedrockVelModel(3,1)).AND.(z.GE.BedrockVelModel(4,1))) THEN
+                 MaterialVal(iElem,1:3) =   BedrockVelModel(4,2:4)
+             ELSEIF ((z.LT.BedrockVelModel(4,1)).AND.(z.GE.BedrockVelModel(5,1))) THEN
+                 MaterialVal(iElem,1:3) =   BedrockVelModel(5,2:4)
+             ELSEIF ((z.LT.BedrockVelModel(5,1)).AND.(z.GE.BedrockVelModel(6,1))) THEN
+                 MaterialVal(iElem,1:3) =   BedrockVelModel(6,2:4)
+            ELSEIF ((z.LT.BedrockVelModel(6,1)).AND.(z.GE.BedrockVelModel(7,1))) THEN
+                 MaterialVal(iElem,1:3) =   BedrockVelModel(7,2:4)
+            ELSEIF ((z.LT.BedrockVelModel(7,1)).AND.(z.GE.BedrockVelModel(8,1))) THEN
+                 MaterialVal(iElem,1:3) =   BedrockVelModel(8,2:4)
+            ELSEIF ((z.LT.BedrockVelModel(8,1)).AND.(z.GE.BedrockVelModel(9,1))) THEN
+                 MaterialVal(iElem,1:3) =   BedrockVelModel(9,2:4)
+             ELSE
+                 MaterialVal(iElem,1:3) =   BedrockVelModel(10,2:4)
+             ENDIF
+        ENDDO
+
 
       CASE(99) ! special case of 1D layered medium, imposed without meshed layers
       ! Northridge regional 1D velocity structure for sediments sites after Wald et al. 1996
