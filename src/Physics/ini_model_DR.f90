@@ -2752,14 +2752,13 @@ MODULE ini_model_DR_mod
   ! stress is assigned to each Gaussian node
   ! depth dependent stress function (gravity)
   ! NOTE: z negative is depth, free surface is at z=0
-  !0.8
-  b11 = 1.0296d0
-  b33 = 0.9704d0
-  b13 =-0.1643d0
-  !0.7
-  b11 = 1.0285d0
-  b33 = 0.9715d0
-  b13 =-0.1584d0
+
+  !for conveniently changing the stress level in the PARAMETER file
+  !b11 b33 and b13 are stress ratio and not absolute stress!
+  b11 = EQN%Bulk_xx_0
+  b33 = EQN%Bulk_yy_0
+  b13 = EQN%ShearXY_0
+
   g = 9.8D0    
   !zIncreasingCohesion = -4000.
   zIncreasingCohesion = 1e10
