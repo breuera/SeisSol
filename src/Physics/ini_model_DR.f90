@@ -2895,7 +2895,7 @@ MODULE ini_model_DR_mod
   REAL                           :: xi, eta, zeta, XGp, YGp, ZGp
   REAL                           :: b11, b33, b13, Omega, g, Pf, zIncreasingCohesion, Rx, Ry, Rz
   INTEGER :: nx,ny,fid, i1, j1
-  REAL, ALLOCATABLE :: x1(:), y1(:), LocalStressGrid(:,:,:)
+  REAL, ALLOCATABLE :: x1(:), y1(:), LocalStressGrid(:,:,:),DcCorrectorGrid(:,:)
   REAL                           :: ax,ay,dx,dy
 
   !-------------------------------------------------------------------------! 
@@ -2926,6 +2926,7 @@ MODULE ini_model_DR_mod
   dy = y1(1) - y1(2)
 
   ALLOCATE(LocalStressGrid(nx,ny,6))
+  ALLOCATE(DcCorrectorGrid(nx,ny))
   DO i = 1, nx
      DO j = 1, ny
           READ(fid,*) LocalStressGrid(i,j,1)
@@ -2934,6 +2935,7 @@ MODULE ini_model_DR_mod
           READ(fid,*) LocalStressGrid(i,j,4)
           READ(fid,*) LocalStressGrid(i,j,5)
           READ(fid,*) LocalStressGrid(i,j,6)
+          READ(fid,*) DcCorrectorGrid(i,j)
      ENDDO
   ENDDO
   CLOSE(fid)
@@ -3012,6 +3014,7 @@ MODULE ini_model_DR_mod
           EQN%IniShearXY(i,iBndGP)  =  ax*ay*LocalStressGrid(i1,j1,4) + (1d0-ax)*ay*LocalStressGrid(i1-1,j1,4) + ax*(1d0-ay)*LocalStressGrid(i1,j1-1,4) + (1d0-ax)*(1d0-ay)*LocalStressGrid(i1-1,j1-1,4)
           EQN%IniShearYZ(i,iBndGP)  =  ax*ay*LocalStressGrid(i1,j1,5) + (1d0-ax)*ay*LocalStressGrid(i1-1,j1,5) + ax*(1d0-ay)*LocalStressGrid(i1,j1-1,5) + (1d0-ax)*(1d0-ay)*LocalStressGrid(i1-1,j1-1,5)
           EQN%IniShearXZ(i,iBndGP)  =  ax*ay*LocalStressGrid(i1,j1,6) + (1d0-ax)*ay*LocalStressGrid(i1-1,j1,6) + ax*(1d0-ay)*LocalStressGrid(i1,j1-1,6) + (1d0-ax)*(1d0-ay)*LocalStressGrid(i1-1,j1-1,6)
+          DISC%DynRup%D_C(i,iBndGP) =  DISC%DynRup%D_C(i,iBndGP) * (ax*ay*DcCorrectorGrid(i1,j1) + (1d0-ax)*ay*DcCorrectorGrid(i1-1,j1) + ax*(1d0-ay)*DcCorrectorGrid(i1,j1-1) + (1d0-ax)*(1d0-ay)*DcCorrectorGrid(i1-1,j1-1))
           !EQN%IniStateVar(i,iBndGP) =  EQN%RS_sv0
 
           ! manage cohesion
@@ -3027,6 +3030,7 @@ MODULE ini_model_DR_mod
                 
   ENDDO !    MESH%Fault%nSide   
   DEALLOCATE(LocalStressGrid)
+  DEALLOCATE(DcCorrectorGrid)
                 
   END SUBROUTINE background_NRFhetStr
 
