@@ -530,6 +530,8 @@ if env['memkind']:
 if env['netcdf'] == 'yes':
     env.Tool('NetcdfTool', required=(not helpMode), parallel=(env['parallelization'] in ['hybrid', 'mpi']))
     env.Append(CPPDEFINES=['USE_NETCDF'])
+    #fortran netcdf for reading heterogeneous stress file
+    env.Append(LIBS=['netcdff'])
 elif env['netcdf'] == 'passive':
     env.Append(CPPDEFINES=['USE_NETCDF', 'NETCDF_PASSIVE'])
 

@@ -94,7 +94,9 @@ MODULE ini_model_DR_mod
 
   PRIVATE :: background_TPV29
   PRIVATE :: background_NRF
+#ifdef USE_NETCDF
   PRIVATE :: background_NRFhetStr
+#endif
   PRIVATE :: background_DIP10
   PRIVATE :: background_TPV3132
   PRIVATE :: background_SUMATRA
@@ -208,8 +210,10 @@ MODULE ini_model_DR_mod
        CALL background_TPV103(DISC,EQN,MESH,BND)
     CASE(119)
        CALL background_NRF(DISC,EQN,MESH,BND)
+#ifdef USE_NETCDF
     CASE(1191)
        CALL background_NRFhetStr(DISC,EQN,MESH,BND)
+#endif
     CASE(121)
        CALL background_DIP10(DISC,EQN,MESH,BND)
     CASE(120)
@@ -2870,13 +2874,25 @@ MODULE ini_model_DR_mod
   END SUBROUTINE background_NRF
 
 
+#ifdef USE_NETCDF
   !> New rough fault: much more simple, heterogeneous stress + planar fault
   !> T. ULRICH 02.2015
   !> Landers1 used as a model
   !<
+  subroutine checkNcError(status)
+    use netcdf
+    integer, intent ( in) :: status
+    
+    if(status /= nf90_noerr) then 
+      logError(*) trim(nf90_strerror(status))
+      stop "Stopped"
+    end if
+  end subroutine checkNcError
+
   SUBROUTINE background_NRFhetStr (DISC,EQN,MESH,BND)
   !-------------------------------------------------------------------------!
   USE DGBasis_mod
+  USE netcdf
   !-------------------------------------------------------------------------!
   IMPLICIT NONE
   !-------------------------------------------------------------------------!
@@ -2894,9 +2910,10 @@ MODULE ini_model_DR_mod
   REAL                           :: chi,tau
   REAL                           :: xi, eta, zeta, XGp, YGp, ZGp
   REAL                           :: b11, b33, b13, Omega, g, Pf, zIncreasingCohesion, Rx, Ry, Rz
-  INTEGER :: nx,ny,fid, i1, j1
+  INTEGER                        :: nx,ny,fid, i1, j1, ncid, dimid, varid
   REAL, ALLOCATABLE :: x1(:), y1(:), LocalStressGrid(:,:,:),DcCorrectorGrid(:,:)
   REAL                           :: ax,ay,dx,dy
+  character (200)                :: dimname, desc
 
   !-------------------------------------------------------------------------! 
   INTENT(IN)    :: MESH, BND 
@@ -2906,39 +2923,43 @@ MODULE ini_model_DR_mod
   ! stress is assigned to each Gaussian node
   ! depth dependent stress function (gravity)
   ! NOTE: z negative is depth, free surface is at z=0
+  call  checkNcError(nf90_open('LocalStressGrid_5_400_R70.nc', NF90_NOWRITE, ncid))
+  !read description
+  call checkNcError(nf90_get_att(ncid, nf90_global, 'description', desc))
+  logError(*) desc
+  ! Get the varid of the data variable, based on its name, and read the data
+  call  checkNcError(nf90_inq_dimid(ncid, "nx", dimid))
+  call  checkNcError(nf90_inquire_dimension(ncid, dimid, dimname, nx))
+  call  checkNcError(nf90_inq_dimid(ncid, "ny", dimid))
+  call  checkNcError(nf90_inquire_dimension(ncid, dimid, dimname, ny))
+  logError(*) 'nx,ny',nx,ny
 
-  zIncreasingCohesion = 1e10
-
-  fid = 96123
-  OPEN(fid,FILE='LocalStressGrid.dat')
-  READ(fid,*) nx
   ALLOCATE(x1(nx))
-  DO i = 1, nx
-     READ(fid,*) x1(i)
-  ENDDO
-  READ(fid,*) ny
   ALLOCATE(y1(ny))
-  DO i = 1, ny
-     READ(fid,*) y1(i)
-  ENDDO
+  !dimensions in fortran are inverted
+  ALLOCATE(LocalStressGrid(6,ny,nx))
+  ALLOCATE(DcCorrectorGrid(ny,nx))
+
+  call  checkNcError(nf90_inq_varid(ncid, "x", varid))
+  call  checkNcError(nf90_get_var(ncid, varid, x1))
+  logError(*) 'x1',x1(1:10)
+
+  call  checkNcError(nf90_inq_varid(ncid, "y", varid))
+  call  checkNcError(nf90_get_var(ncid, varid, y1))
+  logError(*) 'y1',y1(1:10)
+
+  call  checkNcError(nf90_inq_varid(ncid, "LocalStressGrid", varid))
+  call  checkNcError(nf90_get_var(ncid, varid, LocalStressGrid))
+
+  call  checkNcError(nf90_inq_varid(ncid, "DcCorrectorGrid", varid))
+  call  checkNcError(nf90_get_var(ncid, varid, DcCorrectorGrid))
+  call  checkNcError(nf90_close(ncid))
+
   !dx, dy>0 x increasing y decreasing
   dx = x1(2) - x1(1)
   dy = y1(1) - y1(2)
 
-  ALLOCATE(LocalStressGrid(nx,ny,6))
-  ALLOCATE(DcCorrectorGrid(nx,ny))
-  DO i = 1, nx
-     DO j = 1, ny
-          READ(fid,*) LocalStressGrid(i,j,1)
-          READ(fid,*) LocalStressGrid(i,j,2)
-          READ(fid,*) LocalStressGrid(i,j,3)
-          READ(fid,*) LocalStressGrid(i,j,4)
-          READ(fid,*) LocalStressGrid(i,j,5)
-          READ(fid,*) LocalStressGrid(i,j,6)
-          READ(fid,*) DcCorrectorGrid(i,j)
-     ENDDO
-  ENDDO
-  CLOSE(fid)
+  zIncreasingCohesion = 1e10
 
   ! Loop over every mesh element
   DO i = 1, MESH%Fault%nSide
@@ -3001,20 +3022,20 @@ MODULE ini_model_DR_mod
                 EXIT
              ENDIF
           ENDDO
-          if ((i1.EQ.1) .OR. (j1.EQ.1)) THEN
-             logError(*) "i1 or j1 =1"
-             logError(*) i1,j1, x1(i1),y1(j1), xGP, zGP
-          ENDIF
+          !if ((i1.EQ.1) .OR. (j1.EQ.1)) THEN
+          !   logError(*) "i1 or j1 =1"
+          !   logError(*) i1,j1, x1(i1),y1(j1), xGP, zGP
+          !ENDIF
           ax = (xGP-x1(i1-1))/dx
           ay = (y1(j1-1)-zGP)/dy
+          EQN%IniBulk_xx(i,iBndGP)  =  ax*ay*LocalStressGrid(1,j1,i1) + (1d0-ax)*ay*LocalStressGrid(1,j1,i1-1) + ax*(1d0-ay)*LocalStressGrid(1,j1-1,i1) + (1d0-ax)*(1d0-ay)*LocalStressGrid(1,j1-1,i1-1)
+          EQN%IniBulk_yy(i,iBndGP)  =  ax*ay*LocalStressGrid(2,j1,i1) + (1d0-ax)*ay*LocalStressGrid(2,j1,i1-1) + ax*(1d0-ay)*LocalStressGrid(2,j1-1,i1) + (1d0-ax)*(1d0-ay)*LocalStressGrid(2,j1-1,i1-1)
+          EQN%IniBulk_zz(i,iBndGP)  =  ax*ay*LocalStressGrid(3,j1,i1) + (1d0-ax)*ay*LocalStressGrid(3,j1,i1-1) + ax*(1d0-ay)*LocalStressGrid(3,j1-1,i1) + (1d0-ax)*(1d0-ay)*LocalStressGrid(3,j1-1,i1-1)
+          EQN%IniShearXY(i,iBndGP)  =  ax*ay*LocalStressGrid(4,j1,i1) + (1d0-ax)*ay*LocalStressGrid(4,j1,i1-1) + ax*(1d0-ay)*LocalStressGrid(4,j1-1,i1) + (1d0-ax)*(1d0-ay)*LocalStressGrid(4,j1-1,i1-1)
+          EQN%IniShearYZ(i,iBndGP)  =  ax*ay*LocalStressGrid(5,j1,i1) + (1d0-ax)*ay*LocalStressGrid(5,j1,i1-1) + ax*(1d0-ay)*LocalStressGrid(5,j1-1,i1) + (1d0-ax)*(1d0-ay)*LocalStressGrid(5,j1-1,i1-1)
+          EQN%IniShearXZ(i,iBndGP)  =  ax*ay*LocalStressGrid(6,j1,i1) + (1d0-ax)*ay*LocalStressGrid(6,j1,i1-1) + ax*(1d0-ay)*LocalStressGrid(6,j1-1,i1) + (1d0-ax)*(1d0-ay)*LocalStressGrid(6,j1-1,i1-1)
 
-          EQN%IniBulk_xx(i,iBndGP)  =  ax*ay*LocalStressGrid(i1,j1,1) + (1d0-ax)*ay*LocalStressGrid(i1-1,j1,1) + ax*(1d0-ay)*LocalStressGrid(i1,j1-1,1) + (1d0-ax)*(1d0-ay)*LocalStressGrid(i1-1,j1-1,1)
-          EQN%IniBulk_yy(i,iBndGP)  =  ax*ay*LocalStressGrid(i1,j1,2) + (1d0-ax)*ay*LocalStressGrid(i1-1,j1,2) + ax*(1d0-ay)*LocalStressGrid(i1,j1-1,2) + (1d0-ax)*(1d0-ay)*LocalStressGrid(i1-1,j1-1,2)
-          EQN%IniBulk_zz(i,iBndGP)  =  ax*ay*LocalStressGrid(i1,j1,3) + (1d0-ax)*ay*LocalStressGrid(i1-1,j1,3) + ax*(1d0-ay)*LocalStressGrid(i1,j1-1,3) + (1d0-ax)*(1d0-ay)*LocalStressGrid(i1-1,j1-1,3)
-          EQN%IniShearXY(i,iBndGP)  =  ax*ay*LocalStressGrid(i1,j1,4) + (1d0-ax)*ay*LocalStressGrid(i1-1,j1,4) + ax*(1d0-ay)*LocalStressGrid(i1,j1-1,4) + (1d0-ax)*(1d0-ay)*LocalStressGrid(i1-1,j1-1,4)
-          EQN%IniShearYZ(i,iBndGP)  =  ax*ay*LocalStressGrid(i1,j1,5) + (1d0-ax)*ay*LocalStressGrid(i1-1,j1,5) + ax*(1d0-ay)*LocalStressGrid(i1,j1-1,5) + (1d0-ax)*(1d0-ay)*LocalStressGrid(i1-1,j1-1,5)
-          EQN%IniShearXZ(i,iBndGP)  =  ax*ay*LocalStressGrid(i1,j1,6) + (1d0-ax)*ay*LocalStressGrid(i1-1,j1,6) + ax*(1d0-ay)*LocalStressGrid(i1,j1-1,6) + (1d0-ax)*(1d0-ay)*LocalStressGrid(i1-1,j1-1,6)
-          DISC%DynRup%D_C(i,iBndGP) =  DISC%DynRup%D_C(i,iBndGP) * (ax*ay*DcCorrectorGrid(i1,j1) + (1d0-ax)*ay*DcCorrectorGrid(i1-1,j1) + ax*(1d0-ay)*DcCorrectorGrid(i1,j1-1) + (1d0-ax)*(1d0-ay)*DcCorrectorGrid(i1-1,j1-1))
+          DISC%DynRup%D_C(i,iBndGP) =  DISC%DynRup%D_C(i,iBndGP) * (ax*ay*DcCorrectorGrid(j1,i1) + (1d0-ax)*ay*DcCorrectorGrid(j1,i1-1) + ax*(1d0-ay)*DcCorrectorGrid(j1-1,i1) + (1d0-ax)*(1d0-ay)*DcCorrectorGrid(j1-1,i1-1))
           !EQN%IniStateVar(i,iBndGP) =  EQN%RS_sv0
 
           ! manage cohesion
@@ -3033,6 +3054,7 @@ MODULE ini_model_DR_mod
   DEALLOCATE(DcCorrectorGrid)
                 
   END SUBROUTINE background_NRFhetStr
+#endif
 
   SUBROUTINE background_DIP10 (DISC,EQN,MESH,BND)
   !-------------------------------------------------------------------------!
