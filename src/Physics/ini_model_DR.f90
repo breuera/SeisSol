@@ -501,7 +501,7 @@ MODULE ini_model_DR_mod
            ENDIF
            
            IF (r.LE.r_crit) THEN
-              DISC%DynRup%forced_rupture_time(i,iBndGP) = r/(0.7d0*Vs)+(0.081d0*r_crit/(0.7d0*Vs))*(1d0/(1d0-(r/r_crit)*(r/r_crit))-1d0)
+              DISC%DynRup%forced_rupture_time(i,iBndGP) = r/(0.7d0*Vs)+(0.005d0*r_crit/(0.7d0*Vs))*(1d0/(1d0-(r/r_crit)*(r/r_crit))-1d0)
            ELSE
               DISC%DynRup%forced_rupture_time(i,iBndGP) = 1d9
            ENDIF
