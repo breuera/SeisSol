@@ -2354,7 +2354,7 @@ MODULE ini_model_DR_mod
              ENDIF
           ENDIF
 
-          Pf = -1000D0 * g * zGP
+          Pf = -1000D0 * g * zGP * 2d0
           EQN%IniBulk_zz(i,iBndGP)  =  sigzz
           EQN%IniBulk_xx(i,iBndGP)  =  Omega*(b11*(EQN%IniBulk_zz(i,iBndGP)+Pf)-Pf)+(1d0-Omega)*EQN%IniBulk_zz(i,iBndGP)
           EQN%IniBulk_yy(i,iBndGP)  =  Omega*(b22*(EQN%IniBulk_zz(i,iBndGP)+Pf)-Pf)+(1d0-Omega)*EQN%IniBulk_zz(i,iBndGP)

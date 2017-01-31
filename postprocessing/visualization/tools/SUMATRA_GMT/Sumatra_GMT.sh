@@ -5,38 +5,55 @@ gmtset MAP_FRAME_TYPE = fancy \
 
 filename=Sumatra
 
-pscoast -R90/100/0/15 `#region`\
+pscoast -R90/105/0/15 `#region`\
         -Jc100/10/1.0 `#projection`\
-        -B5g5 `#grid`\
+        -B200g200 `#grid`\
         -Df `#resolution`\
         -S114/159/207 `#wet fill color`\
         -G233/185/110 `#dry fill color`\
         -Wthinnest `#shoreline pen`\
         -K > $filename.eps
 
-awk -F',' '{if ($1!~/^#/) {print $1,$2,180.*atan2($4,$3)/3.14159,0.3*sqrt($3**2+$4**2)}}' GPSJadeGahalaut.dat >tmp.dat
-sort -k1,1 -k2,2 tmp.dat > GPSJadeGahalaut_GMT.dat
-awk -F',' '{if ($1!~/^#/) {print $1,$2,90,0.3*$5}}' GPSJadeGahalaut.dat >tmp.dat
-sort -k1,1 -k2,2 tmp.dat > GPSJadeGahalaut_vert_GMT.dat
-awk -F',' '{if ($1!~/^#/) {print $1,$2,180.*atan2($4,$3)/3.14159,0.3*sqrt($3**2+$4**2)}}' gps_synth.dat >tmp2.dat
-sort -k1,1 -k2,2 tmp2.dat > gps_synth_GMT.dat
-awk -F',' '{if ($1!~/^#/) {print $1,$2,90,0.3*$5}}' gps_synth.dat >tmp2.dat
-sort -k1,1 -k2,2 tmp2.dat > gps_synth_vert_GMT.dat
 
-#site   Long.      Lat.      East    North     sE      sN    Up     sU
-awk -F',' '{if ($1!~/^#/) {print $2,$3,180.*atan2($5,$4)/3.14159,0.3*sqrt($4**2+$5**2)/1000.}}' Subarya_et_al_table1.dat > Subarya_et_al_table1_GMT.dat
-awk -F',' '{if ($1!~/^#/) {print $2,$3,90,0.3*$8/1000.}}' Subarya_et_al_table1.dat > Subarya_et_al_table1_vert_GMT.dat
+
+#preprocessing psxy input file for horizontal obs GPS
+awk -F',' '{if (($1!~/^#/)&&($12>0.5)) {print $2,$3,$10,0.3*$11}}' GPSobs.dat >tmp.dat
+sort -k1,1 -k2,2 tmp.dat > GPSobs1_GMT.dat
+#preprocessing psxy input file for vertical obs GPS
+awk -F',' '{if (($1!~/^#/)&&($12>0.5)) {print $2,$3,90,0.3*$6}}' GPSobs.dat >tmp.dat
+sort -k1,1 -k2,2 tmp.dat > GPSobs1_vert_GMT.dat
+#preprocessing psxy input file for horizontal obs GPS
+awk -F',' '{if (($1!~/^#/)&&($12<0.5)) {print $2,$3,$10,6*$11}}' GPSobs.dat >tmp.dat
+sort -k1,1 -k2,2 tmp.dat > GPSobs2_GMT.dat
+#preprocessing psxy input file for vertical obs GPS
+awk -F',' '{if (($1!~/^#/)&&($12<0.5)) {print $2,$3,90,6*$6}}' GPSobs.dat >tmp.dat
+sort -k1,1 -k2,2 tmp.dat > GPSobs2_vert_GMT.dat
+
+#preprocessing psxy input file for horizontal synthetics
+awk -F',' '{if (($1!~/^#/)&&($9>0.5)) {print $1,$2,$6, 0.3*$7}}' gps_synth.dat >tmp.dat
+sort -k1,1 -k2,2 tmp.dat > GPSsynth1_GMT.dat
+#preprocessing psxy input file for vertical synthetics
+awk -F',' '{if ((($1!~/^#/)&&($9>0.5))&&($8==0)) {print $1,$2,90,0.3*$5}}' gps_synth.dat >tmp.dat
+sort -k1,1 -k2,2 tmp.dat > GPSsynth1_vert_GMT.dat
+#preprocessing psxy input file for horizontal synthetics
+awk -F',' '{if (($1!~/^#/)&&($9<0.5)) {print $1,$2,$6, 6*$7}}' gps_synth.dat >tmp.dat
+sort -k1,1 -k2,2 tmp.dat > GPSsynth2_GMT.dat
+#preprocessing psxy input file for vertical synthetics
+awk -F',' '{if (($1!~/^#/)&&($9<0.5)&&($8==0)) {print $1,$2,90,6*$5}}' gps_synth.dat >tmp.dat
+sort -k1,1 -k2,2 tmp.dat > GPSsynth2_vert_GMT.dat
 
 #horizontal components
 headv=0.05i
-gmt psxy -R -Jc -Sv$headv+ea -Gblack -W0.5p -Baf  -K -O GPSJadeGahalaut_GMT.dat >> $filename.eps
-gmt psxy -R -Jc -Sv$headv+ea -Gblack -W0.5p -Baf  -K -O Subarya_et_al_table1_GMT.dat >> $filename.eps
-gmt psxy -R -Jc -Sv$headv+ea -Gred -W0.5p,red -Baf -K -O gps_synth_GMT.dat >> $filename.eps
+gmt psxy -R -Jc -Sv$headv+ea -Gblack -W0.5p -Baf  -K -O GPSobs1_GMT.dat >> $filename.eps
+gmt psxy -R -Jc -Sv$headv+ea -Gblack -W0.5p,blue -Baf  -K -O GPSobs2_GMT.dat >> $filename.eps
+gmt psxy -R -Jc -Sv$headv+ea -Gred -W0.5p,red -Baf -K -O GPSsynth1_GMT.dat >> $filename.eps
+gmt psxy -R -Jc -Sv$headv+ea -Gred -W0.5p,red -Baf -K -O GPSsynth2_GMT.dat >> $filename.eps
 
 #vertical components
-gmt psxy -R -Jc -Sv$headv+ea -Gblack -W0.5p -Baf  -K -O GPSJadeGahalaut_vert_GMT.dat >> $filename.eps
-gmt psxy -R -Jc -Sv$headv+ea -Gblack -W0.5p -Baf  -K -O Subarya_et_al_table1_vert_GMT.dat >> $filename.eps
-gmt psxy -R -Jc -Sv$headv+ea -Gred -W0.5p,red,.. -Baf -K -O gps_synth_vert_GMT.dat >> $filename.eps
+gmt psxy -R -Jc -Sv$headv+ea -Gblack -W0.5p -Baf  -K -O GPSobs1_vert_GMT.dat >> $filename.eps
+gmt psxy -R -Jc -Sv$headv+ea -Gblack -W0.5p,blue -Baf  -K -O GPSobs2_vert_GMT.dat >> $filename.eps
+gmt psxy -R -Jc -Sv$headv+ea -Gred -W0.5p,red,.. -Baf -K -O GPSsynth1_vert_GMT.dat >> $filename.eps
+gmt psxy -R -Jc -Sv$headv+ea -Gred -W0.5p,red,.. -Baf -K -O GPSsynth2_vert_GMT.dat >> $filename.eps
 
 
 #gmt psxy sumatra_fault_all.dat -R -Jc -Sf0.8i/0.1i+l+t -Gwhite -W -B10 -K -O >>$filename.eps
