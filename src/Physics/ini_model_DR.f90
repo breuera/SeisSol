@@ -169,6 +169,9 @@ MODULE ini_model_DR_mod
    CASE(33)
        !  SCEC TPV3132 test case : strike slip rupture in layered medium
        CALL background_TPV33 (DISC,EQN,MESH,BND)
+   CASE(35)
+       !  SCEC TPV35 test case : Parkfield 2004 M6 Earthquake
+       CALL background_TPV35 (DISC,EQN,MESH,BND)
     CASE(50)
        ! Tohoku 1
        CALL background_TOH1(DISC,EQN,MESH)
@@ -2691,6 +2694,139 @@ MODULE ini_model_DR_mod
   ENDDO !    MESH%Fault%nSide   
                 
   END SUBROUTINE background_TPV33       
+
+  !>  SCEC TPV35 test case : Parkfield 2004 M6 Earthquake
+  !> T. ULRICH 02.2017
+  !<
+  SUBROUTINE background_TPV35 (DISC,EQN,MESH,BND)
+  !-------------------------------------------------------------------------!
+  USE DGBasis_mod
+  !-------------------------------------------------------------------------!
+  IMPLICIT NONE
+  !-------------------------------------------------------------------------!
+  TYPE(tDiscretization), target  :: DISC
+  TYPE(tEquations)               :: EQN
+  TYPE(tUnstructMesh)            :: MESH
+  TYPE (tBoundary)               :: BND
+  !-------------------------------------------------------------------------!
+  ! Local variable declaration
+  LOGICAL                        :: FoundLayer
+  INTEGER                        :: i,j
+  INTEGER                        :: iSide,iElem,iBndGP
+  INTEGER                        :: iLocalNeighborSide,iNeighbor
+  INTEGER                        :: MPIIndex, iObject
+  INTEGER                        :: nx,ny,i1,j1, idum, jdum, fid
+  REAL                           :: xV(MESH%GlobalVrtxType),yV(MESH%GlobalVrtxType),zV(MESH%GlobalVrtxType)
+  REAL                           :: x, z, dummy
+  REAL                           :: chi,tau
+  REAL                           :: xi, eta, zeta, XGp, YGp, ZGp
+  REAL                           :: ax,az
+  REAL, ALLOCATABLE              :: aMus(:,:),aShStr(:,:)
+  REAL                           :: xHypo, zHypo, r
+  REAL, parameter :: PI = 4 * atan (1.0d0)
+  !-------------------------------------------------------------------------! 
+  INTENT(IN)    :: MESH, BND 
+  INTENT(INOUT) :: DISC,EQN
+  !-------------------------------------------------------------------------! 
+  ! TPV29
+  ! stress is assigned to each Gaussian node
+  ! depth dependent stress function (gravity)
+  ! NOTE: z negative is depth, free surface is at z=0
+  logError(*) 'initialization Gauss wise'
+  ! Loop over every mesh element
+
+  !REad Benchmark input file
+!400  155  -30000.  10000.  0.  15500.
+!0  0  -30000.  0.  3.3000000e-01  1.6000000e+01
+!1  0  -29900.  0.  3.3000000e-01  1.6000000e+01
+!2  0  -29800.  0.  3.3000000e-01  1.6000000e+01
+  fid = 96123
+  OPEN(fid,FILE='tpv35_input_data.txt')
+  READ(fid,*) nx, ny, dummy,dummy,dummy,dummy
+  ALLOCATE(aMus(0:nx,0:ny))
+  ALLOCATE(aShStr(0:nx,0:ny))
+  DO j = 0, ny
+     DO i = 0, nx
+        READ(fid,*) idum, jdum ,dummy,dummy, aMus(i,j), aShStr(i,j)
+     ENDDO
+  ENDDO
+  CLOSE(fid)
+
+  DO i = 1, MESH%Fault%nSide
+      
+      ! element ID    
+      iElem = MESH%Fault%Face(i,1,1)
+      iSide = MESH%Fault%Face(i,2,1)  
+      
+      EQN%IniBulk_xx(i,:)  =  EQN%Bulk_xx_0
+      EQN%IniBulk_yy(i,:)  =  EQN%Bulk_yy_0
+      EQN%IniBulk_zz(i,:)  =  EQN%Bulk_zz_0
+      EQN%IniShearXY(i,:)  =  EQN%ShearXY_0
+      EQN%IniShearYZ(i,:)  =  EQN%ShearYZ_0
+      EQN%IniShearXZ(i,:)  =  EQN%ShearXZ_0
+            
+      ! ini frictional parameters
+      !EQN%IniStateVar(i,:) =  EQN%RS_sv0
+                
+      ! Gauss node coordinate definition and stress assignment
+      ! get vertices of complete tet
+      IF (MESH%Fault%Face(i,1,1) == 0) THEN
+          ! iElem is in the neighbor domain
+          ! The neighbor element belongs to a different MPI domain
+          iNeighbor           = MESH%Fault%Face(i,1,2)          ! iNeighbor denotes "-" side
+          iLocalNeighborSide  = MESH%Fault%Face(i,2,2)
+          iObject  = MESH%ELEM%BoundaryToObject(iLocalNeighborSide,iNeighbor)
+          MPIIndex = MESH%ELEM%MPINumber(iLocalNeighborSide,iNeighbor)
+          !
+          xV(1:4) = BND%ObjMPI(iObject)%NeighborCoords(1,1:4,MPIIndex)
+          yV(1:4) = BND%ObjMPI(iObject)%NeighborCoords(2,1:4,MPIIndex)
+          zV(1:4) = BND%ObjMPI(iObject)%NeighborCoords(3,1:4,MPIIndex)
+      ELSE
+          !
+          ! get vertices
+          xV(1:4) = MESH%VRTX%xyNode(1,MESH%ELEM%Vertex(1:4,iElem))
+          yV(1:4) = MESH%VRTX%xyNode(2,MESH%ELEM%Vertex(1:4,iElem))
+          zV(1:4) = MESH%VRTX%xyNode(3,MESH%ELEM%Vertex(1:4,iElem))
+      ENDIF
+          !zb = SUM(zV(1:4))/4.0D0      
+
+      DO iBndGP = 1,DISC%Galerkin%nBndGP
+          !
+          ! Transformation of boundary GP's into XYZ coordinate system
+          chi  = MESH%ELEM%BndGP_Tri(1,iBndGP)
+          tau  = MESH%ELEM%BndGP_Tri(2,iBndGP)
+          CALL TrafoChiTau2XiEtaZeta(xi,eta,zeta,chi,tau,iSide,0)
+          CALL TetraTrafoXiEtaZeta2XYZ(xGP,yGP,zGP,xi,eta,zeta,xV,yV,zV)
+      
+          z = zGP  
+          x = xGP
+          i1 = floor((x+30000d0)/100d0)
+          j1 = floor(-z/100d0)
+          ax = (100d0*(i1+1)-(x+30d3))/100d0
+          az = (100d0*(j1+1)+z)/100d0
+          if ((iBndGP.EQ.1).AND.(i.EQ.100)) THEN
+              logError(*) x, z, i1, j1, ax ,az
+          ENDIF
+          if ((max(ax,az).LT.0d0).OR.(min(ax,az).GT.1d0)) THEN
+              logError(*) ax, az, i1, j1, x ,z
+          ENDIF
+          if (i1.GE.nx) THEN
+            logError(*) x, ax, i1,nx
+          endif
+          if (j1.GE.ny) THEN
+            logError(*) z, az, j1,ny
+          ENDIF
+          DISC%DynRup%Mu_S(i,iBndGP) =  ax*az*aMus(i1,j1)+ ax*(1d0-az)*aMus(i1,j1+1)+(1d0-ax)*az*aMus(i1+1,j1) + (1d0-ax)*(1d0-az)*aMus(i1+1,j1+1)
+          EQN%IniShearXY(i,iBndGP)  =  1e6*(ax*az*aShStr(i1,j1)+ ax*(1d0-az)*aShStr(i1,j1+1)+(1d0-ax)*az*aShStr(i1+1,j1) + (1d0-ax)*(1d0-az)*aShStr(i1+1,j1+1))
+          !DISC%DynRup%Mu_S(i,iBndGP) =  aMus(i1,j1)
+          !EQN%IniShearXY(i,iBndGP)  =  1e6*aShStr(i1,j1)
+                
+      ENDDO ! iBndGP
+                
+  ENDDO !    MESH%Fault%nSide   
+  DEALLOCATE(aMus)              
+  DEALLOCATE(aShStr)              
+  END SUBROUTINE background_TPV35
 
   !> Tohoku1 backround stress model
   !<

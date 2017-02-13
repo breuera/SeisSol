@@ -101,7 +101,7 @@ CONTAINS
     ! Local variable declaration
     LOGICAL                         :: FoundLayer, DIVZERO=.FALSE., nodewise=.FALSE.
     CHARACTER(LEN=600)              :: Name
-    INTEGER                         :: i, j, k, ielem, iVertex, iLayer, iMech, iRFFlag, iMaterial, nVar, mu_ct, la_ct
+    INTEGER                         :: i, j, k, ielem, iVertex, iLayer, iMech, iRFFlag, iMaterial, nVar, mu_ct, la_ct,iLmin,iLmax
     INTEGER                         :: iDegFr, iIntGP
     INTEGER                         :: NX, NY, NZ, zoneNum, nPert, counter
     INTEGER, POINTER                :: PertMaterial(:)
@@ -123,7 +123,7 @@ CONTAINS
     REAL                            :: w_freq(EQN%nMechanisms)
     REAL                            :: material(1:3), MaterialVal_k
     REAL                            :: ZoneIns, ZoneTrans, xG, yG, X2, LocX(3), LocY(3), tmp
-    REAL                            :: BedrockVelModel(10,4)
+    REAL                            :: BedrockVelModel(22,4)
     INTEGER                         :: eType
     INTEGER         :: nTens3GP
     REAL,POINTER    :: Tens3GaussP(:,:)
@@ -615,6 +615,135 @@ CONTAINS
            ENDIF
         ENDDO
 
+      CASE(121) !DIP10 : diping fault, 10 deg dip
+
+         ! R = 0.5
+         b11 = 1.3788
+         b22 = 1.1894
+         b12 = 0.0
+         b13 = 0.2541
+         b23 = 0.0000
+	  ! R = 0.7
+	  b11 = 1.4008
+	  b22 = 1.2004
+	  b12 = 0.0
+	  b13 = 0.2689
+	  b23 = 0.0000
+
+	  ! R = 0.5 DIP 16 (inc)
+	  b11 = 1.4887
+	  b22 = 1.2444
+	  b12 = 0.0000
+	  b13 = 0.2147
+	  b23 = 0.0000
+
+          ! R = 0.55 DIP 20 (zhypo = 22.5e3, ie 25e3 taking into account the 2.5e3 water)
+          b11 = 1.5660
+          b22 = 1.2830
+          b12 = 0.0000
+          b13 = 0.1859
+          b23 = 0.0000
+
+         g = 9.8D0    
+
+        MaterialVal(:,1) = EQN%rho0
+        MaterialVal(:,2) = EQN%mu
+        MaterialVal(:,3) = EQN%lambda
+        ! Initialisation of IniStress(6 stress components in 3D)
+        !
+        ALLOCATE(EQN%IniStress(6,MESH%nElem))
+                 EQN%IniStress(:,:)=0.0D0
+
+        DO iElem=1, MESH%nElem
+
+                y = MESH%ELEM%xyBary(2,iElem) !average depth inside an element
+                z = MESH%ELEM%xyBary(3,iElem) !average depth inside an element
+          yGP=y
+          zGP=z
+          IF (yGP.LT.-68000D0) THEN
+             Ry = (-yGp - 68000D0)/20e3
+          ELSEIF (yGP.GT.68000D0) THEN
+             Ry = (yGp - 68000D0)/20e3
+          ELSE
+             Ry = 0.
+          ENDIF
+
+          IF (zGP.LT.-45000D0) THEN
+             Rz = (-zGp - 45000D0)/20e3
+          ! For z close to 0, we play with the cohesion
+          !ELSEIF (zGP.GT.-10000D0) THEN
+          !   Rz = (zGp + 10000D0)/20e3
+          ELSE
+             Rz = 0.
+          ENDIF
+
+          Omega = max(0D0,1D0-sqrt(Ry**2+Rz**2))
+
+          Pf = -1000D0 * g * z
+          EQN%IniStress(3,iElem)  =  2670d0*g*z 
+          EQN%IniStress(1,iElem)  =  Omega*(b11*(EQN%IniStress(3,iElem)+Pf)-Pf)+(1d0-Omega)*EQN%IniStress(3,iElem)
+          EQN%IniStress(2,iElem)  =  Omega*(b22*(EQN%IniStress(3,iElem)+Pf)-Pf)+(1d0-Omega)*EQN%IniStress(3,iElem)
+          EQN%IniStress(4,iElem)  =  Omega*(b12*(EQN%IniStress(3,iElem)+Pf))
+          EQN%IniStress(5,iElem)  =  Omega*(b13*(EQN%IniStress(3,iElem)+Pf))
+          EQN%IniStress(6,iElem)  =  Omega*(b23*(EQN%IniStress(3,iElem)+Pf))
+          EQN%IniStress(1,iElem)  =  EQN%IniStress(1,iElem) + Pf
+          EQN%IniStress(2,iElem)  =  EQN%IniStress(2,iElem) + Pf
+          EQN%IniStress(3,iElem)  =  EQN%IniStress(3,iElem) + Pf
+        ENDDO
+
+      CASE(35)     ! T. Ulrich TPV35 13.02.17
+        !far side (y>0)
+        ! Layer                   depth    rho     mu          lambda
+	BedrockVelModel(1,:) = (/10000.0,2000.0,2.420000000e09,3.160000000e09/)
+	BedrockVelModel(2,:) = (/-1000.0,2000.0,2.420000000e09,3.160000000e09/)
+	BedrockVelModel(3,:) = (/-1800.0,2300.0,1.113200000e10,5.911000000e09/)
+	BedrockVelModel(4,:) = (/-2100.0,2300.0,1.803200000e10,4.508000000e09/)
+	BedrockVelModel(5,:) = (/-3400.0,2300.0,1.676700000e10,1.945800000e10/)
+	BedrockVelModel(6,:) = (/-3900.0,2300.0,1.803200000e10,2.612800000e10/)
+	BedrockVelModel(7,:) = (/-8300.0,2700.0,2.764800000e10,2.054700000e10/)
+	BedrockVelModel(8,:) = (/-12700.0,2800.0,3.833200000e10,1.430800000e10/)
+	BedrockVelModel(9,:) = (/-17500.0,2800.0,4.043200000e10,3.743600000e10/)
+	BedrockVelModel(10,:) = (/-20300.0,2800.0,5.177200000e10,2.214800000e10/)
+	BedrockVelModel(11,:) = (/-500000.0,2800.0,5.177200000e10,4.566800000e10/)
+		!near side
+	BedrockVelModel(12,:) = (/10000.0,2000.0,2.420000000e09,3.160000000e09/)
+	BedrockVelModel(13,:) = (/-1000.0,2000.0,2.420000000e09,3.160000000e09/)
+	BedrockVelModel(14,:) = (/-2000.0,2300.0,9.200000000e09,9.775000000e09/)
+	BedrockVelModel(15,:) = (/-3000.0,2300.0,1.437500000e10,1.782500000e10/)
+	BedrockVelModel(16,:) = (/-3500.0,2500.0,2.250000000e10,2.260000000e10/)
+	BedrockVelModel(17,:) = (/-5800.0,2700.0,2.764800000e10,3.242700000e10/)
+	BedrockVelModel(18,:) = (/-14100.0,2700.0,3.499200000e10,3.380400000e10/)
+	BedrockVelModel(19,:) = (/-17100.0,2800.0,3.628800000e10,5.689600000e10/)
+	BedrockVelModel(20,:) = (/-20400.0,2800.0,5.177200000e10,2.592800000e10/)
+	BedrockVelModel(21,:) = (/-500000.0,2800.0,5.177200000e10,4.566800000e10/)
+
+        DO ielem=1,MESH%nElem
+           x = MESH%ELEM%xyBary(1,iElem)
+           y = MESH%ELEM%xyBary(2,iElem)
+           z = MESH%ELEM%xyBary(3,iElem)
+           FoundLayer = .FALSE.
+
+           IF (y.GE.0) THEN
+              iLmin=1
+              iLmax=10
+           ELSE
+              iLmin=12
+              iLmax=20
+           ENDIF
+
+           DO iLayer = iLmin, iLmax
+             IF( (z.LE.BedrockVelModel(iLayer,1)).AND.(z.GE.BedrockVelModel(iLayer+1,1)) ) THEN
+               FoundLayer = .TRUE.
+               MaterialVal(iElem,1:3) = BedrockVelModel(iLayer+1,2:4)
+               EXIT
+             ENDIF
+           ENDDO
+           IF(.NOT.FoundLayer) THEN
+             logError(*) 'Layered Medium Error: No layer found for depth', z
+             STOP
+           ENDIF
+        ENDDO
+
       CASE(60) ! special case of 1D layered medium, imposed without meshed layers for Landers 1992
                ! after Wald and Heaton 1994, Table 1
                ! Note that mesh coordinates are in km, but the scaling matrix is used in read_mesh
@@ -861,7 +990,7 @@ CONTAINS
              ELSEIF ((z.LT.BedrockVelModel(3,1)).AND.(z.GE.BedrockVelModel(7,1))) THEN
                  MaterialVal(iElem,1:3) =   BedrockVelModel(7,2:4)
              ELSE
-                 logError(*) "depth lower than",BedrockVelModel(7,1),iLayer,z
+	      logError(*) "depth lower than",BedrockVelModel(7,1),iLayer,z
              ENDIF
            CASE(3)
             ! Crustal Crust
