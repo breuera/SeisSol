@@ -85,15 +85,15 @@ for i = 1:nr_stations
     
     % open file
     fid=fopen(sFileName,'w');
-    fprintf(fid,'# problem=TPV104\n');
+    fprintf(fid,'# problem=TPV35\n');
     fprintf(fid,'# author=Thomas ULRICH\n');
     fprintf(fid,['# date=',str3,'\n']);
     fprintf(fid,'# code=SeisSol (ADER-DG)\n');
     fprintf(fid,'# Background stress is assigned to each individual Gaussian integation point (GP)\n');    
     %fprintf(fid,'# Background stress is assigned to a complete element determined by its geometrical barycenter\n');
     %fprintf(fid,'# element_size=50 m on fault 5000m far away Growth rate 1.15, Normal Stress o1\n');
-    fprintf(fid,'# element_size=250 m on fault 5000m far away Growth rate 1.10\n');
-    fprintf(fid,'# 1,66e6 tetra elements\n');
+    fprintf(fid,'# element_size=200 m on fault 2500m far away coarsening ratio 0.10\n');
+    fprintf(fid,'# 4,00e6 tetra elements\n');
     fprintf(fid,'# order of approximation in space and time= O5\n');
     fprintf(fid,'# time_step= %e \n',timestep);
     fprintf(fid,'# num_time_steps= %d \n',timesteps);

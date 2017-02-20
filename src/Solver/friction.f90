@@ -654,7 +654,7 @@ MODULE Friction_mod
           DO iBndGP=1,nBndGP
             phi1 = phi1_array(iDegFr,iBndGP)
             phi2 = phi2_array(iDegFr,iBndGP)
-            !
+            ! equivalent to Kenneth formulation with 1 = - / 2 = + and Z+ = w_speed_neig(2)*rho_neig
             LocNorStress    = phi1*BndVar1(iDegFr,1,iTimePoly) + &
                               ((phi2*BndVar2(iDegFr,1,iTimePoly)-phi1*BndVar1(iDegFr,1,iTimePoly) + &
                                w_speed_neig(1)*rho_neig*(phi2*BndVar2(iDegFr,7,iTimePoly)-phi1*BndVar1(iDegFr,7,iTimePoly))) * &
@@ -671,7 +671,6 @@ MODULE Friction_mod
             LocUVel         = phi1*BndVar1(iDegFr,7,iTimePoly) + (LocNorStress-phi1*BndVar1(iDegFr,1,iTimePoly)) * UVelDivisor 
 
             UVelGP(iBndGP,iTimeGP)     = UVelGP(iBndGP,iTimeGP)     + LocUVel*dtPowerFactor(iTimePoly,iTimeGP)
-
             NorStressGP(iBndGP,iTimeGP) = NorStressGP(iBndGP,iTimeGP) + LocNorStress*dtPowerFactor(iTimePoly,iTimeGP)
             XYStressGP(iBndGP,iTimeGP)  = XYStressGP(iBndGP,iTimeGP)  + LocXYStress*dtPowerFactor(iTimePoly,iTimeGP)
             XZStressGP(iBndGP,iTimeGP)  = XZStressGP(iBndGP,iTimeGP)  + LocXZStress*dtPowerFactor(iTimePoly,iTimeGP)
