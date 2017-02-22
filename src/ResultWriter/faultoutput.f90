@@ -273,7 +273,7 @@ CONTAINS
     REAL    :: rotmat(1:6,1:6)                                                ! Rotation matrix
     REAL    :: TmpMat(EQN%nBackgroundVar)                                     ! temporary material values
     REAL    :: NorDivisor,ShearDivisor,UVelDivisor
-    REAL    :: strike_vector(1:3), crossprod(1:3) !for rotation of Slip from local to strike, dip coordinate
+    REAL    :: norm, n(1:3), dip_vector(1:3), strike_vector(1:3), crossprod(1:3) !for rotation of Slip from local to strike, dip coordinate
     REAL    :: cos1, sin1, scalarprod
     REAL, PARAMETER    :: ZERO = 0.0D0
     ! Parameters used for calculating Vr
@@ -538,12 +538,26 @@ CONTAINS
           !       w_speed(1)*rho) * NorDivisor
           ! Store Values into Output vector OutVal
 
+    n = NormalVect_n
+    strike_vector(1) = n(2)/sqrt(n(1)**2+n(2)**2)
+    strike_vector(2) = -n(1)/sqrt(n(1)**2+n(2)**2)
+    strike_vector(3) = 0.0D0
+    dip_vector(1) = -strike_vector(2)*n(3)
+    dip_vector(2) = strike_vector(1)*n(3)
+    dip_vector(3) = strike_vector(2)*n(1) - strike_vector(1)*n(2)
+    norm = 1.0D0/sqrt(dip_vector(1)**2+dip_vector(2)**2+dip_vector(3)**2)
+    dip_vector(1) = dip_vector(1)*norm
+    dip_vector(2) = dip_vector(2)*norm
+    dip_vector(3) = dip_vector(3)*norm
+
           OutVars = 0
           IF (DynRup_output%OutputMask(1).EQ.1) THEN
               OutVars = OutVars + 1
-              DynRup_output%OutVal(iOutPoints,1,OutVars) = LocSRs !OutVars =1
+!              DynRup_output%OutVal(iOutPoints,1,OutVars) = LocSRs !OutVars =1
+DynRup_output%OutVal(iOutPoints,1,OutVars) = -dot_product(SideVal(8)*NormalVect_s+SideVal(9)*NormalVect_t, strike_vector) + dot_product(SideVal2(8)*NormalVect_s+SideVal2(9)*NormalVect_t, strike_vector)
               OutVars = OutVars + 1
-              DynRup_output%OutVal(iOutPoints,1,OutVars) = LocSRd !OutVars =2
+!              DynRup_output%OutVal(iOutPoints,1,OutVars) = LocSRd !OutVars =2
+DynRup_output%OutVal(iOutPoints,1,OutVars) = -dot_product(SideVal(8)*NormalVect_s+SideVal(9)*NormalVect_t, dip_vector) + dot_product(SideVal2(8)*NormalVect_s+SideVal2(9)*NormalVect_t, dip_vector)
           ENDIF
           IF (DynRup_output%OutputMask(2).EQ.1) THEN
               OutVars = OutVars + 1
