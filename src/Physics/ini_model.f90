@@ -735,82 +735,6 @@ CONTAINS
            ENDIF
         ENDDO
 
-      CASE(121) !DIP10 : diping fault, 10 deg dip
-
-         ! R = 0.5
-         b11 = 1.3788
-         b22 = 1.1894
-         b12 = 0.0
-         b13 = 0.2541
-         b23 = 0.0000
-	  ! R = 0.7
-	  b11 = 1.4008
-	  b22 = 1.2004
-	  b12 = 0.0
-	  b13 = 0.2689
-	  b23 = 0.0000
-
-	  ! R = 0.5 DIP 16 (inc)
-	  b11 = 1.4887
-	  b22 = 1.2444
-	  b12 = 0.0000
-	  b13 = 0.2147
-	  b23 = 0.0000
-
-          ! R = 0.55 DIP 20 (zhypo = 22.5e3, ie 25e3 taking into account the 2.5e3 water)
-          b11 = 1.5660
-          b22 = 1.2830
-          b12 = 0.0000
-          b13 = 0.1859
-          b23 = 0.0000
-
-         g = 9.8D0    
-
-        MaterialVal(:,1) = EQN%rho0
-        MaterialVal(:,2) = EQN%mu
-        MaterialVal(:,3) = EQN%lambda
-        ! Initialisation of IniStress(6 stress components in 3D)
-        !
-        ALLOCATE(EQN%IniStress(6,MESH%nElem))
-                 EQN%IniStress(:,:)=0.0D0
-
-        DO iElem=1, MESH%nElem
-
-                y = MESH%ELEM%xyBary(2,iElem) !average depth inside an element
-                z = MESH%ELEM%xyBary(3,iElem) !average depth inside an element
-          yGP=y
-          zGP=z
-          IF (yGP.LT.-68000D0) THEN
-             Ry = (-yGp - 68000D0)/20e3
-          ELSEIF (yGP.GT.68000D0) THEN
-             Ry = (yGp - 68000D0)/20e3
-          ELSE
-             Ry = 0.
-          ENDIF
-
-          IF (zGP.LT.-45000D0) THEN
-             Rz = (-zGp - 45000D0)/20e3
-          ! For z close to 0, we play with the cohesion
-          !ELSEIF (zGP.GT.-10000D0) THEN
-          !   Rz = (zGp + 10000D0)/20e3
-          ELSE
-             Rz = 0.
-          ENDIF
-
-          Omega = max(0D0,1D0-sqrt(Ry**2+Rz**2))
-
-          Pf = -1000D0 * g * z
-          EQN%IniStress(3,iElem)  =  2670d0*g*z 
-          EQN%IniStress(1,iElem)  =  Omega*(b11*(EQN%IniStress(3,iElem)+Pf)-Pf)+(1d0-Omega)*EQN%IniStress(3,iElem)
-          EQN%IniStress(2,iElem)  =  Omega*(b22*(EQN%IniStress(3,iElem)+Pf)-Pf)+(1d0-Omega)*EQN%IniStress(3,iElem)
-          EQN%IniStress(4,iElem)  =  Omega*(b12*(EQN%IniStress(3,iElem)+Pf))
-          EQN%IniStress(5,iElem)  =  Omega*(b13*(EQN%IniStress(3,iElem)+Pf))
-          EQN%IniStress(6,iElem)  =  Omega*(b23*(EQN%IniStress(3,iElem)+Pf))
-          EQN%IniStress(1,iElem)  =  EQN%IniStress(1,iElem) + Pf
-          EQN%IniStress(2,iElem)  =  EQN%IniStress(2,iElem) + Pf
-          EQN%IniStress(3,iElem)  =  EQN%IniStress(3,iElem) + Pf
-        ENDDO
-
       CASE(35)     ! T. Ulrich TPV35 13.02.17
         !far side (y>0)
         ! Layer                   depth    rho     mu          lambda
@@ -862,6 +786,7 @@ CONTAINS
              logError(*) 'Layered Medium Error: No layer found for depth', z
              STOP
            ENDIF
+        ENDDO
 
       CASE(121) !DIP10 : diping fault, 10 deg dip
 
@@ -938,7 +863,6 @@ CONTAINS
           EQN%IniStress(2,iElem)  =  EQN%IniStress(2,iElem) + Pf
           EQN%IniStress(3,iElem)  =  EQN%IniStress(3,iElem) + Pf
 
->>>>>>> personalize ini routines
         ENDDO
 
       CASE(60) ! special case of 1D layered medium, imposed without meshed layers for Landers 1992
