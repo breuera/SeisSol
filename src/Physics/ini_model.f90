@@ -124,13 +124,10 @@ CONTAINS
     REAL                            :: material(1:3), MaterialVal_k
     REAL                            :: ZoneIns, ZoneTrans, xG, yG, X2, LocX(3), LocY(3), tmp
     REAL                            :: BedrockVelModel(22,4)
-    REAL                            :: b11, b22, b33, b13, b23, b12, g, Pf, Rx, Ry, Rz, yGP, zGP
+    REAL                            :: b11, b22, b33, b13, b23, b12, g, Pf, Rx, Ry, Rz, yGP, zGP,sigzz
     INTEGER                         :: eType
-    REAL                            :: Pf                                     ! fluid pressure
-    REAL                            :: b11, b22, b12, b13, b23, b33           ! coefficients for special loading
     REAL                            :: yN1, yN2, yS1, yS2, xS1, xS2, alpha
     REAL                            :: nLayers, zLayers(20), rhoLayers(20)
-    REAL                            :: sigzz, Rz, g
     REAL                            :: bii(6)
     INTEGER         :: nTens3GP
     REAL,POINTER    :: Tens3GaussP(:,:)
