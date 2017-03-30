@@ -24,7 +24,7 @@ with open('GPSobs.dat','r') as fin:
       vals = [float(val) for val in line.split(',')[1:12]]
       gpsdata.append([vals[0],vals[1],vals[4],vals[10]])
 gpsdata=np.asarray(gpsdata)
-print gpsdata
+#print gpsdata
 
 fout = open('gps_synth.dat','w')
 fout.write('#lat lon dx dy dz hangle hnorm noGPSz GPSnorm\n')
@@ -40,15 +40,22 @@ for i in range(indexgps0,indexgps1):
    fid.readline()
    xgps = float(fid.readline().split()[2])
    ygps = float(fid.readline().split()[2])
-   fid.readline()
+   zgps = float(fid.readline().split()[2])
    xyz = pyproj.transform(myproj, lla ,xgps,ygps,0, radians=False)
-   print xyz
+   #print xyz
 
    test = np.loadtxt(fid)
-   dx = np.trapz(test[:,7], x=test[:,0])
-   dy = np.trapz(test[:,8], x=test[:,0])
-   dz = np.trapz(test[:,9], x=test[:,0])
-   print (dx, dy,dz)
+   #test = test[0:5000,:]
+   ndata = np.shape(test)[1]
+   if ndata==4:
+      dx = np.trapz(test[:,1], x=test[:,0])
+      dy = np.trapz(test[:,2], x=test[:,0])
+      dz = np.trapz(test[:,3], x=test[:,0])
+   else:
+     dx = np.trapz(test[:,7], x=test[:,0])
+     dy = np.trapz(test[:,8], x=test[:,0])
+     dz = np.trapz(test[:,9], x=test[:,0])
+   #print (dx, dy,dz)
    angle = 180.*atan2(dy,dx)/pi
    norm = sqrt(dx**2+dy**2)
 
@@ -59,6 +66,6 @@ for i in range(indexgps0,indexgps1):
    else:
       isnan=0
     
-   fout.write('%.3f,%.3f,%f,%f,%f,%f,%f,%f,%f\n' %(xyz[0],xyz[1],dx,dy,dz, angle,norm, isnan,gpsdata[index,3]))
+   fout.write('%.3f,%.3f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n' %(xyz[0],xyz[1],dx,dy,dz, angle,norm, isnan,gpsdata[index,3],xgps,ygps,zgps))
 fout.close()
 print 'done!'
